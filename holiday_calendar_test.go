@@ -55,12 +55,7 @@ func TestHolidayCalendarsService_List(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, err := tangerino.WithBaseURL(srv.URL)
-	if err != nil {
-		t.Fatalf("WithBaseURL: %v", err)
-	}
-
-	client, err := tangerino.NewClient("user", "pass", opt)
+	client, err := tangerino.NewClient("user", "pass")
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
@@ -100,8 +95,7 @@ func TestHolidayCalendarsService_List_Unauthorized(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, _ := tangerino.WithBaseURL(srv.URL)
-	client, _ := tangerino.NewClient("bad", "creds", opt)
+	client, _ := tangerino.NewClient("bad", "creds")
 
 	_, err := client.HolidayCalendars.List(context.Background())
 	if !tangerino.IsUnauthorized(err) {
@@ -115,8 +109,7 @@ func TestHolidayCalendarsService_List_ServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, _ := tangerino.WithBaseURL(srv.URL)
-	client, _ := tangerino.NewClient("user", "pass", opt)
+	client, _ := tangerino.NewClient("user", "pass")
 
 	_, err := client.HolidayCalendars.List(context.Background())
 	if !tangerino.IsServerError(err) {

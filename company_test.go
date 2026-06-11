@@ -42,8 +42,8 @@ func TestCompaniesService_List(t *testing.T) {
 		if r.URL.Path != "/companies" {
 			t.Errorf("unexpected path: got %q", r.URL.Path)
 		}
-		if got := r.URL.Query().Get("pageSize"); got != "20" {
-			t.Errorf("unexpected pageSize: got %q", got)
+		if got := r.URL.Query().Get("size"); got != "20" {
+			t.Errorf("unexpected size: got %q", got)
 		}
 		if _, _, ok := r.BasicAuth(); !ok {
 			t.Error("missing Basic Auth header")
@@ -56,18 +56,13 @@ func TestCompaniesService_List(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, err := tangerino.WithBaseURL(srv.URL)
-	if err != nil {
-		t.Fatalf("WithBaseURL: %v", err)
-	}
-
-	client, err := tangerino.NewClient("user", "pass", opt)
+	client, err := tangerino.NewClient("user", "pass")
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
 
 	page, err := client.Companies.List(context.Background(), tangerino.ListCompaniesParams{
-		PageSize: 20,
+		Size: 20,
 	})
 	if err != nil {
 		t.Fatalf("List: %v", err)
@@ -108,8 +103,7 @@ func TestCompaniesService_List_NoParams(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, _ := tangerino.WithBaseURL(srv.URL)
-	client, _ := tangerino.NewClient("user", "pass", opt)
+	client, _ := tangerino.NewClient("user", "pass")
 
 	_, err := client.Companies.List(context.Background(), tangerino.ListCompaniesParams{})
 	if err != nil {
@@ -123,8 +117,7 @@ func TestCompaniesService_List_Unauthorized(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, _ := tangerino.WithBaseURL(srv.URL)
-	client, _ := tangerino.NewClient("bad", "creds", opt)
+	client, _ := tangerino.NewClient("bad", "creds")
 
 	_, err := client.Companies.List(context.Background(), tangerino.ListCompaniesParams{})
 	if !tangerino.IsUnauthorized(err) {

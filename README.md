@@ -7,7 +7,7 @@
 
 A Go client library for the **Tangerino Employer API**.
 
-Covers the core employer modules: Employees, Companies, Holiday Calendars, and Work Schedules.
+Covers the core employer modules: Employees, Companies, Holiday Calendars, Work Schedules, Workplaces, and Punches.
 
 ---
 
@@ -17,7 +17,7 @@ Covers the core employer modules: Employees, Companies, Holiday Calendars, and W
 go get github.com/raykavin/tangerino-go
 ```
 
-Requires **Go 1.22+**. No external dependencies uses only the Go standard library.
+Requires **Go 1.22+**. No external dependencies — uses only the Go standard library.
 
 ---
 
@@ -34,7 +34,7 @@ if err != nil {
 ctx := context.Background()
 
 // List employees (first page)
-page, err := client.Employees.List(ctx, tangerino.ListEmployeesParams{PageSize: 20})
+page, err := client.Employees.List(ctx, tangerino.ListEmployeesParams{Size: 20})
 if err != nil {
     log.Fatal(err)
 }
@@ -52,7 +52,7 @@ for _, e := range page.Content {
 // Production environment (default)
 client, err := tangerino.NewClient("username", "password")
 
-// Custom base URL (e.g. for testing or staging)
+// Custom base URL (e.g. for testing)
 opt, err := tangerino.WithBaseURL("https://custom.tangerino.example.com")
 if err != nil {
     log.Fatal(err)
@@ -72,7 +72,7 @@ client, err = tangerino.NewClient("username", "password", tangerino.WithHTTPClie
 ## Authentication
 
 The Tangerino API uses **HTTP Basic Authentication**. Credentials are encoded and
-sent automatically on every request no additional setup is required after creating
+sent automatically on every request — no additional setup is required after creating
 the client.
 
 ```go
@@ -88,13 +88,13 @@ client, err := tangerino.NewClient("your-username", "your-password")
 ```go
 // List employees (paginated)
 page, err := client.Employees.List(ctx, tangerino.ListEmployeesParams{
-    PageSize: 20,
+    Size: 20,
 })
 fmt.Printf("Page 1 of %d (%d total)\n", page.TotalPages, page.TotalElements)
 
 // Apply filters
 page, err = client.Employees.List(ctx, tangerino.ListEmployeesParams{
-    PageSize:          20,
+    Size:              20,
     BranchExternalID:  "branch-001",
     ManagerExternalID: "manager-042",
     ShowFired:         1, // include terminated employees
@@ -103,7 +103,7 @@ page, err = client.Employees.List(ctx, tangerino.ListEmployeesParams{
 // Filter by last update (Unix timestamp in milliseconds)
 page, err = client.Employees.List(ctx, tangerino.ListEmployeesParams{
     LastUpdate: time.Now().Add(-24 * time.Hour).UnixMilli(),
-    PageSize:   50,
+    Size:       50,
 })
 
 // Iterate all pages
@@ -139,15 +139,15 @@ for _, e := range page.Content {
 ### Companies
 
 ```go
-// List companies
+// List companies (paginated)
 page, err := client.Companies.List(ctx, tangerino.ListCompaniesParams{
-    PageSize: 20,
+    Size: 20,
 })
 
-// With pagination
+// Explicit page navigation
 page, err = client.Companies.List(ctx, tangerino.ListCompaniesParams{
-    PageNumber: 1,
-    PageSize:   10,
+    Page: 1,
+    Size: 10,
 })
 
 for _, c := range page.Content {
@@ -172,13 +172,6 @@ for _, cal := range calendars {
         fmt.Printf("  %s - %s\n", h.Date, h.Description)
     }
 }
-
-// Filter calendars by year
-for _, cal := range calendars {
-    if cal.Year == 2025 {
-        // process 2025 calendars
-    }
-}
 ```
 
 ---
@@ -187,7 +180,9 @@ for _, cal := range calendars {
 
 ```go
 // List all work schedules
-page, err := client.WorkSchedules.List(ctx)
+page, err := client.WorkSchedules.List(ctx, tangerino.ListWorkSchedulesParams{
+    Size: 50,
+})
 if err != nil {
     log.Fatal(err)
 }
@@ -213,6 +208,96 @@ for _, ws := range page.Content {
 
     fmt.Println("Last modified:", ws.AlterationDate.Format("02/01/2006"))
 }
+```
+
+---
+
+### Workplaces
+
+```go
+// List workplaces (paginated)
+page, err := client.Workplaces.List(ctx, tangerino.ListWorkplacesParams{
+    Size: 20,
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, w := range page.Content {
+    fmt.Printf("[%d] %s — %s, %s\n", w.ID, w.Name, w.City, w.State)
+}
+
+// Iterate all pages
+params := tangerino.ListWorkplacesParams{Size: 50}
+for {
+    page, err := client.Workplaces.List(ctx, params)
+    if err != nil {
+        log.Fatal(err)
+    }
+    for _, w := range page.Content {
+        fmt.Println(w.ID, w.Name)
+    }
+    if !page.HasNext() {
+        break
+    }
+    params.Page = page.NextPageNumber()
+}
+```
+
+---
+
+### Punches
+
+The punch endpoints live on a separate host (`apis.tangerino.com.br`) — the client handles routing automatically.
+
+```go
+adj := true
+pending := false
+
+// List punch records for an employee
+punches, err := client.Punches.List(ctx, employeeID, tangerino.PunchesParams{
+    Status:     3,
+    Adjustment: &adj,
+    StartDate:  time.Now().AddDate(0, -1, 0), // converted to Unix seconds
+    EndDate:    time.Now(),
+    Pending:    &pending,
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, p := range punches {
+    end := "open"
+    if p.EndDate != nil {
+        end = p.EndDate.String() // "2026-06-01T18:02:00"
+    }
+    fmt.Printf("[%d] %s  %s → %s  (%s manual: start=%v end=%v)\n",
+        p.ID, p.Date,
+        p.StartDate.String(), end,
+        formatMillis(p.TotalHours),
+        p.StartManual, p.EndManual,
+    )
+}
+
+// Get aggregate summary for an employee
+summary, err := client.Punches.Summary(ctx, employeeID, tangerino.PunchesParams{
+    StartDate: time.Now().AddDate(0, -1, 0),
+    EndDate:   time.Now(),
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Worked: %dms  Expected: %dms  Balance: %dms\n",
+    summary.TotalWorked, summary.TotalExpected, summary.Balance)
+```
+
+**`StartDate` and `EndDate`** are `time.Time` values and are automatically converted to Unix second timestamps in the request query string.
+
+**`Adjustment` and `Pending`** are `*bool` — use a pointer so that `false` is distinguishable from "not set":
+
+```go
+t, f := true, false
+tangerino.PunchesParams{Adjustment: &t, Pending: &f}
 ```
 
 ---
@@ -254,6 +339,23 @@ d.String()    // string        → "11:00"
 // EndShift2 = 100800000 → "28:00"
 ```
 
+### `LocalDateTime`
+
+Used for punch timestamps (`StartDate`, `EndDate` in `Punch`). Represents a
+wall-clock datetime without timezone in the format `"2006-01-02T15:04:05"`.
+
+```go
+p := punches[0]
+
+p.StartDate.String()  // "2026-06-01T14:06:00"
+p.StartDate.Time()    // time.Time (no timezone — server local time)
+
+// EndDate is *LocalDateTime, nil when the employee hasn't clocked out yet
+if p.EndDate != nil {
+    fmt.Println(p.EndDate.String())
+}
+```
+
 ---
 
 ## Pagination
@@ -280,6 +382,13 @@ Helper methods:
 page.HasNext()         // bool: whether a next page exists
 page.NextPageNumber()  // int: page number to use in the next request (-1 on last page)
 ```
+
+Pagination parameters follow a consistent naming convention across all services:
+
+| Field  | Query param | Description                    |
+|--------|-------------|--------------------------------|
+| `Page` | `page`      | Zero-based page index          |
+| `Size` | `size`      | Number of items per page       |
 
 Full iteration pattern:
 
@@ -309,15 +418,15 @@ page, err := client.Employees.List(ctx, tangerino.ListEmployeesParams{})
 if err != nil {
     switch {
     case tangerino.IsUnauthorized(err):
-        // HTTP 401 invalid credentials
+        // HTTP 401 — invalid credentials
     case tangerino.IsForbidden(err):
-        // HTTP 403 insufficient permissions
+        // HTTP 403 — insufficient permissions
     case tangerino.IsNotFound(err):
-        // HTTP 404 resource not found
+        // HTTP 404 — resource not found
     case tangerino.IsRateLimited(err):
-        // HTTP 429 too many requests, back off and retry
+        // HTTP 429 — too many requests, back off and retry
     case tangerino.IsServerError(err):
-        // HTTP 5xx transient server error
+        // HTTP 5xx — transient server error
     default:
         if apiErr, ok := err.(*tangerino.APIError); ok {
             fmt.Printf("Status: %d\n", apiErr.StatusCode)
@@ -335,26 +444,33 @@ if err != nil {
 go test ./... -v
 ```
 
-All tests use `net/http/httptest` no external services or environment variables
+All tests use `net/http/httptest` — no external services or environment variables
 are required.
 
 ---
 
 ## Endpoints Coverage
 
-### Employees (1/1)
-- [x] `GET /employee/find-all` - List employees (paginated, with filters)
+### Employees
+- [x] `GET /employee/find-all` — List employees (paginated, with filters)
 
-### Companies (1/1)
-- [x] `GET /companies` - List companies (paginated)
+### Companies
+- [x] `GET /companies` — List companies (paginated)
 
-### Holiday Calendars (1/1)
-- [x] `GET /holiday-calendar/` - List holiday calendars
+### Holiday Calendars
+- [x] `GET /holiday-calendar/` — List holiday calendars
 
-### Work Schedules (1/1)
-- [x] `GET /work-schedule` - List work schedules
+### Work Schedules
+- [x] `GET /work-schedule` — List work schedules (paginated)
 
-**Total: 4 endpoints covered**
+### Workplaces
+- [x] `GET /workplace/find-all` — List workplaces (paginated)
+
+### Punches
+- [x] `GET /punch/v2/punches/employees/{id}` — List punch records for an employee
+- [x] `GET /punch/v2/punches/employees/{id}/summary` — Get aggregate time summary for an employee
+
+**Total: 7 endpoints covered**
 
 ---
 

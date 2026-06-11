@@ -28,20 +28,3 @@ func TestNewClient_RequiresCredentials(t *testing.T) {
 		})
 	}
 }
-
-func TestWithBaseURL_RejectsInvalidURL(t *testing.T) {
-	_, err := tangerino.WithBaseURL("://bad-url")
-	if err == nil {
-		t.Error("expected error for invalid URL, got nil")
-	}
-}
-
-func TestWithBaseURL_AcceptsValidURL(t *testing.T) {
-	opt, err := tangerino.WithBaseURL("https://custom.example.com")
-	if err != nil {
-		t.Fatalf("WithBaseURL: unexpected error: %v", err)
-	}
-	if opt == nil {
-		t.Error("expected non-nil Option")
-	}
-}

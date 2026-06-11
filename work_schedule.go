@@ -1,6 +1,10 @@
 package tangerino
 
-import "context"
+import (
+	"context"
+	"net/url"
+	"strconv"
+)
 
 // WorkSchedulesService handles communication with the work schedule endpoints.
 type WorkSchedulesService struct {
@@ -64,11 +68,33 @@ type WorkSchedule struct {
 	Inactive bool `json:"inactive"`
 }
 
-// List retrieves all work schedules available for the authenticated employer.
+// ListWorkSchedulesParams holds optional pagination parameters for the work schedule endpoint.
+// All fields are optional; zero values are omitted from the request.
+type ListWorkSchedulesParams struct {
+	// Page is the zero-based page index to retrieve.
+	Page int
+	// Size is the number of items per page.
+	Size int
+}
+
+// List retrieves a single page of work schedules available for the authenticated employer.
+// All parameters are optional; omit them by using a zero-value ListWorkSchedulesParams.
 //
 // GET /work-schedule
-func (s *WorkSchedulesService) List(ctx context.Context) (*Page[WorkSchedule], error) {
-	rawURL := s.client.resolveURL("/work-schedule")
+func (s *WorkSchedulesService) List(ctx context.Context, params ListWorkSchedulesParams) (*Page[WorkSchedule], error) {
+	q := url.Values{}
+
+	if params.Page != 0 {
+		q.Set("page", strconv.Itoa(params.Page))
+	}
+	if params.Size != 0 {
+		q.Set("size", strconv.Itoa(params.Size))
+	}
+
+	rawURL := s.client.resolveEmployerURL("/work-schedule")
+	if len(q) > 0 {
+		rawURL += "?" + q.Encode()
+	}
 
 	var page Page[WorkSchedule]
 	if err := s.client.get(ctx, rawURL, &page); err != nil {
