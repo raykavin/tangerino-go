@@ -7,7 +7,7 @@
 //	    log.Fatal(err)
 //	}
 //
-//	page, err := client.Employees.List(ctx, tangerino.ListEmployeesParams{PageSize: 20})
+//	page, err := client.Employees.List(ctx, tangerino.ListEmployeesParams{Size: 20})
 //	punches, err := client.Punches.GetEmployeePunches(ctx, employeeID)
 package tangerino
 
@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -46,6 +45,10 @@ type Client struct {
 	WorkSchedules *WorkSchedulesService
 	// Companies provides access to company endpoints.
 	Companies *CompaniesService
+	// Workplaces provides access to workplace endpoints.
+	Workplaces *WorkplacesService
+	// Punches provides access to punch clock endpoints.
+	Punches *PunchesService
 }
 
 // Option is a functional option for configuring a Client.
@@ -57,17 +60,6 @@ func WithHTTPClient(hc *http.Client) Option {
 	return func(c *Client) {
 		c.httpClient = hc
 	}
-}
-
-// WithBaseURL overrides the API base URL.
-// Returns an error if the provided value is not a valid URL.
-func WithBaseURL(rawURL string) (Option, error) {
-	if _, err := url.ParseRequestURI(rawURL); err != nil {
-		return nil, fmt.Errorf("invalid base URL %q: %w", rawURL, err)
-	}
-	return func(c *Client) {
-		c.env.baseURL = rawURL
-	}, nil
 }
 
 // WithStagingEnv points the client at the staging environment.
@@ -105,6 +97,8 @@ func NewClient(username, password string, opts ...Option) (*Client, error) {
 	c.HolidayCalendars = &HolidayCalendarsService{client: c}
 	c.WorkSchedules = &WorkSchedulesService{client: c}
 	c.Companies = &CompaniesService{client: c}
+	c.Workplaces = &WorkplacesService{client: c}
+	c.Punches = &PunchesService{client: c}
 
 	return c, nil
 }
@@ -116,8 +110,14 @@ func (c *Client) basicAuth() string {
 }
 
 // resolveURL builds the full URL by appending path to the configured base URL.
-func (c *Client) resolveURL(path string) string {
-	return strings.TrimRight(c.env.baseURL, "/") + path
+func (c *Client) resolveEmployerURL(path string) string {
+	return strings.TrimRight(c.env.employerBaseURL, "/") + path
+}
+
+// resolvePunchURL builds the full URL for punch clock endpoints,
+// which live under a separate host from the employer API.
+func (c *Client) resolvePunchURL(path string) string {
+	return strings.TrimRight(c.env.punchesBaseURL, "/") + path
 }
 
 // get performs an authenticated GET request against rawURL and decodes the

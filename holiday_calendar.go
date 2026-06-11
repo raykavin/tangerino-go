@@ -45,7 +45,7 @@ type holidayCalendarListResponse struct {
 //
 // GET /holiday-calendar/
 func (s *HolidayCalendarsService) List(ctx context.Context) ([]HolidayCalendar, error) {
-	rawURL := s.client.resolveURL("/holiday-calendar/")
+	rawURL := s.client.resolveEmployerURL("/holiday-calendar/")
 
 	var resp holidayCalendarListResponse
 	if err := s.client.get(ctx, rawURL, &resp); err != nil {

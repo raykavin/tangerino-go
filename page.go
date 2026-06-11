@@ -6,7 +6,7 @@ package tangerino
 //
 // Example:
 //
-//	page, err := client.Employees.List(ctx, tangerino.ListEmployeesParams{PageSize: 20})
+//	page, err := client.Employees.List(ctx, tangerino.ListEmployeesParams{Size: 20})
 //	for !page.IsLast() {
 //	    // process page.Content ...
 //	    params.Page++

@@ -89,11 +89,7 @@ type ListEmployeesParams struct {
 	LastUpdate int64
 	// Page is the zero-based page index to retrieve.
 	Page int
-	// PageNumber is an alias for Page accepted by the API.
-	PageNumber int
-	// PageSize is the number of items per page (used alongside PageNumber).
-	PageSize int
-	// Size is the number of items per page (used alongside Page).
+	// Size is the number of items per page.
 	Size int
 	// Offset is the item offset within the result set.
 	Offset int
@@ -120,12 +116,6 @@ func (s *EmployeesService) List(ctx context.Context, params ListEmployeesParams)
 	if params.Page != 0 {
 		q.Set("page", strconv.Itoa(params.Page))
 	}
-	if params.PageNumber != 0 {
-		q.Set("pageNumber", strconv.Itoa(params.PageNumber))
-	}
-	if params.PageSize != 0 {
-		q.Set("pageSize", strconv.Itoa(params.PageSize))
-	}
 	if params.Size != 0 {
 		q.Set("size", strconv.Itoa(params.Size))
 	}
@@ -136,7 +126,7 @@ func (s *EmployeesService) List(ctx context.Context, params ListEmployeesParams)
 		q.Set("showFired", strconv.Itoa(params.ShowFired))
 	}
 
-	rawURL := s.client.resolveURL("/employee/find-all")
+	rawURL := s.client.resolveEmployerURL("/employee/find-all")
 	if len(q) > 0 {
 		rawURL += "?" + q.Encode()
 	}

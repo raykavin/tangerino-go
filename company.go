@@ -30,12 +30,12 @@ type Company struct {
 // ListCompaniesParams holds optional filter and pagination parameters for the companies endpoint.
 // All fields are optional; zero values are omitted from the request.
 type ListCompaniesParams struct {
+	// Page is the zero-based page index to retrieve.
+	Page int
+	// Size is the number of items per page.
+	Size int
 	// Offset is the item offset within the result set.
 	Offset int
-	// PageNumber is the zero-based page index to retrieve.
-	PageNumber int
-	// PageSize is the number of items per page.
-	PageSize int
 }
 
 // List retrieves a single page of companies matching the given parameters.
@@ -45,17 +45,17 @@ type ListCompaniesParams struct {
 func (s *CompaniesService) List(ctx context.Context, params ListCompaniesParams) (*Page[Company], error) {
 	q := url.Values{}
 
+	if params.Page != 0 {
+		q.Set("page", strconv.Itoa(params.Page))
+	}
+	if params.Size != 0 {
+		q.Set("size", strconv.Itoa(params.Size))
+	}
 	if params.Offset != 0 {
 		q.Set("offset", strconv.Itoa(params.Offset))
 	}
-	if params.PageNumber != 0 {
-		q.Set("pageNumber", strconv.Itoa(params.PageNumber))
-	}
-	if params.PageSize != 0 {
-		q.Set("pageSize", strconv.Itoa(params.PageSize))
-	}
 
-	rawURL := s.client.resolveURL("/companies")
+	rawURL := s.client.resolveEmployerURL("/companies")
 	if len(q) > 0 {
 		rawURL += "?" + q.Encode()
 	}

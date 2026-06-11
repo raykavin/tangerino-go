@@ -43,9 +43,9 @@ func TestWorkSchedulesService_List(t *testing.T) {
 				Inactive:                false,
 			},
 			{
-				ID:       2000001,
-				Name:     "Escala Padrão - Tangerino Intermitente",
-				Standard: false,
+				ID:        2000001,
+				Name:      "Escala Padrão - Tangerino Intermitente",
+				Standard:  false,
 				Timetable: []tangerino.WorkScheduleTimetable{},
 			},
 		},
@@ -73,17 +73,12 @@ func TestWorkSchedulesService_List(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, err := tangerino.WithBaseURL(srv.URL)
-	if err != nil {
-		t.Fatalf("WithBaseURL: %v", err)
-	}
-
-	client, err := tangerino.NewClient("user", "pass", opt)
+	client, err := tangerino.NewClient("user", "pass")
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
 
-	page, err := client.WorkSchedules.List(context.Background())
+	page, err := client.WorkSchedules.List(context.Background(), tangerino.ListWorkSchedulesParams{})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -133,10 +128,9 @@ func TestWorkSchedulesService_List_OptionalFields(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, _ := tangerino.WithBaseURL(srv.URL)
-	client, _ := tangerino.NewClient("user", "pass", opt)
+	client, _ := tangerino.NewClient("user", "pass")
 
-	page, err := client.WorkSchedules.List(context.Background())
+	page, err := client.WorkSchedules.List(context.Background(), tangerino.ListWorkSchedulesParams{})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -159,11 +153,67 @@ func TestWorkSchedulesService_List_Unauthorized(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, _ := tangerino.WithBaseURL(srv.URL)
-	client, _ := tangerino.NewClient("bad", "creds", opt)
+	client, _ := tangerino.NewClient("bad", "creds")
 
-	_, err := client.WorkSchedules.List(context.Background())
+	_, err := client.WorkSchedules.List(context.Background(), tangerino.ListWorkSchedulesParams{})
 	if !tangerino.IsUnauthorized(err) {
 		t.Errorf("expected unauthorized error, got: %v", err)
+	}
+}
+
+func TestWorkSchedulesService_List_NoParams(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.RawQuery; got != "" {
+			t.Errorf("expected empty query string, got %q", got)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(tangerino.Page[tangerino.WorkSchedule]{})
+	}))
+	defer srv.Close()
+
+	client, _ := tangerino.NewClient("user", "pass")
+
+	_, err := client.WorkSchedules.List(context.Background(), tangerino.ListWorkSchedulesParams{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+}
+
+func TestWorkSchedulesService_List_Pagination(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("page"); got != "2" {
+			t.Errorf("page param: want %q, got %q", "2", got)
+		}
+		if got := r.URL.Query().Get("size"); got != "10" {
+			t.Errorf("size param: want %q, got %q", "10", got)
+		}
+
+		page := tangerino.Page[tangerino.WorkSchedule]{
+			Number:     2,
+			Size:       10,
+			Last:       true,
+			TotalPages: 3,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(page)
+	}))
+	defer srv.Close()
+
+	client, _ := tangerino.NewClient("user", "pass")
+
+	page, err := client.WorkSchedules.List(context.Background(), tangerino.ListWorkSchedulesParams{
+		Page: 2,
+		Size: 10,
+	})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if page.HasNext() {
+		t.Error("expected HasNext() = false for last page")
+	}
+	if page.NextPageNumber() != -1 {
+		t.Errorf("NextPageNumber: want -1, got %d", page.NextPageNumber())
 	}
 }

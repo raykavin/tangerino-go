@@ -27,12 +27,12 @@ func TestEmployeesService_List(t *testing.T) {
 					StartDate: 1776049200000,
 					Inactive:  false,
 				},
-				Company:      tangerino.EntityRef{ID: 2189522},
-				JobRole:      tangerino.EntityRef{ID: 2292991},
-				LastManager:  tangerino.EntityRef{ID: 0},
-				Managers:     []tangerino.EntityRef{},
-				WorkplaceList: []tangerino.EntityRef{{ID: 2230906}},
-				EffectiveDate: 1776049200000,
+				Company:          tangerino.EntityRef{ID: 2189522},
+				JobRole:          tangerino.EntityRef{ID: 2292991},
+				LastManager:      tangerino.EntityRef{ID: 0},
+				Managers:         []tangerino.EntityRef{},
+				WorkplaceList:    []tangerino.EntityRef{{ID: 2230906}},
+				EffectiveDate:    1776049200000,
 				Fired:            false,
 				CanViewWorkgroup: true,
 				Status:           0,
@@ -52,8 +52,8 @@ func TestEmployeesService_List(t *testing.T) {
 		if r.URL.Path != "/employee/find-all" {
 			t.Errorf("unexpected path: got %q", r.URL.Path)
 		}
-		if got := r.URL.Query().Get("pageSize"); got != "20" {
-			t.Errorf("unexpected pageSize: got %q", got)
+		if got := r.URL.Query().Get("size"); got != "20" {
+			t.Errorf("unexpected size: got %q", got)
 		}
 		if _, _, ok := r.BasicAuth(); !ok {
 			t.Error("missing Basic Auth header")
@@ -66,18 +66,13 @@ func TestEmployeesService_List(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, err := tangerino.WithBaseURL(srv.URL)
-	if err != nil {
-		t.Fatalf("WithBaseURL: %v", err)
-	}
-
-	client, err := tangerino.NewClient("user", "pass", opt)
+	client, err := tangerino.NewClient("user", "pass")
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
 
 	page, err := client.Employees.List(context.Background(), tangerino.ListEmployeesParams{
-		PageSize: 20,
+		Size: 20,
 	})
 	if err != nil {
 		t.Fatalf("List: %v", err)
@@ -118,8 +113,7 @@ func TestEmployeesService_List_NoParams(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, _ := tangerino.WithBaseURL(srv.URL)
-	client, _ := tangerino.NewClient("user", "pass", opt)
+	client, _ := tangerino.NewClient("user", "pass")
 
 	_, err := client.Employees.List(context.Background(), tangerino.ListEmployeesParams{})
 	if err != nil {
@@ -137,9 +131,9 @@ func TestEmployeesService_List_Pagination(t *testing.T) {
 		}
 
 		page := tangerino.Page[tangerino.Employee]{
-			Number:    1,
-			Size:      10,
-			Last:      true,
+			Number:     1,
+			Size:       10,
+			Last:       true,
 			TotalPages: 2,
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -147,8 +141,7 @@ func TestEmployeesService_List_Pagination(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	opt, _ := tangerino.WithBaseURL(srv.URL)
-	client, _ := tangerino.NewClient("user", "pass", opt)
+	client, _ := tangerino.NewClient("user", "pass")
 
 	page, err := client.Employees.List(context.Background(), tangerino.ListEmployeesParams{
 		Page: 1,
