@@ -132,10 +132,10 @@ func buildPunchQuery(params PunchesParams) url.Values {
 		q.Set("adjustment", strconv.FormatBool(*params.Adjustment))
 	}
 	if !params.StartDate.IsZero() {
-		q.Set("startDate", strconv.FormatInt(params.StartDate.Unix(), 10))
+		q.Set("startDate", strconv.FormatInt(params.StartDate.UnixMilli(), 10))
 	}
 	if !params.EndDate.IsZero() {
-		q.Set("endDate", strconv.FormatInt(params.EndDate.Unix(), 10))
+		q.Set("endDate", strconv.FormatInt(params.EndDate.UnixMilli(), 10))
 	}
 	if params.Pending != nil {
 		q.Set("pending", strconv.FormatBool(*params.Pending))

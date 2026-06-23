@@ -45,8 +45,8 @@ func TestPunchesService_List(t *testing.T) {
 	adj := true
 	pending := false
 
-	startDate := time.Unix(1772334000, 0)
-	endDate := time.Unix(1776199815, 0)
+	startDate := time.UnixMilli(time.Now().UnixMilli())
+	endDate := time.UnixMilli(time.Now().Add(-24 * time.Hour).UnixMilli())
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/punch/v2/punches/employees/6419626" {
@@ -155,7 +155,7 @@ func TestPunchesService_List_NoParams(t *testing.T) {
 
 func TestPunchesService_List_TimeConversion(t *testing.T) {
 	// Validates that time.Time values are converted to Unix seconds (not millis).
-	ts := time.Unix(1700000000, 0)
+	ts := time.UnixMilli(time.Now().UnixMilli())
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.URL.Query().Get("startDate"); got != "1700000000" {
