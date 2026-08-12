@@ -97,6 +97,46 @@ type ListEmployeesParams struct {
 	ShowFired int
 }
 
+// FindEmployeeParams holds optional filter parameters for the single-employee lookup endpoint.
+// All fields are optional; zero values are omitted from the request.
+type FindEmployeeParams struct {
+	// ExternalID filters by the employee's external identifier.
+	ExternalID string
+	// IgnoreFired, when true, excludes terminated employees from the lookup.
+	IgnoreFired bool
+	// TangerinoID filters by the employee's Tangerino identifier.
+	TangerinoID int
+}
+
+// Find retrieves a single employee matching the given parameters.
+//
+// GET /employee/find
+func (s *EmployeesService) Find(ctx context.Context, params FindEmployeeParams) (*Employee, error) {
+	q := url.Values{}
+
+	if params.ExternalID != "" {
+		q.Set("externalId", params.ExternalID)
+	}
+	if params.IgnoreFired {
+		q.Set("ignoreFired", strconv.FormatBool(params.IgnoreFired))
+	}
+	if params.TangerinoID != 0 {
+		q.Set("tangerinoId", strconv.Itoa(params.TangerinoID))
+	}
+
+	rawURL := s.client.resolveEmployerURL("/employee/find")
+	if len(q) > 0 {
+		rawURL += "?" + q.Encode()
+	}
+
+	var employee Employee
+	if err := s.client.get(ctx, rawURL, &employee); err != nil {
+		return nil, err
+	}
+
+	return &employee, nil
+}
+
 // List retrieves a single page of employees matching the given parameters.
 // All parameters are optional; omit them by using a zero-value ListEmployeesParams.
 //

@@ -159,6 +159,80 @@ func TestEmployeesService_List_Pagination(t *testing.T) {
 	}
 }
 
+func TestEmployeesService_Find(t *testing.T) {
+	want := tangerino.Employee{
+		ID:         7226,
+		Name:       "CELMA PEREIRA DA SILVA",
+		ExternalID: "string",
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/employee/find" {
+			t.Errorf("unexpected path: got %q", r.URL.Path)
+		}
+		if got := r.URL.Query().Get("externalId"); got != "string" {
+			t.Errorf("externalId param: want %q, got %q", "string", got)
+		}
+		if got := r.URL.Query().Get("ignoreFired"); got != "true" {
+			t.Errorf("ignoreFired param: want %q, got %q", "true", got)
+		}
+		if got := r.URL.Query().Get("tangerinoId"); got != "7226" {
+			t.Errorf("tangerinoId param: want %q, got %q", "7226", got)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(want); err != nil {
+			t.Errorf("encoding response: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	client, err := tangerino.NewClient("user", "pass")
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	employee, err := client.Employees.Find(context.Background(), tangerino.FindEmployeeParams{
+		ExternalID:  "string",
+		IgnoreFired: true,
+		TangerinoID: 7226,
+	})
+	if err != nil {
+		t.Fatalf("Find: %v", err)
+	}
+
+	if employee.ID != want.ID {
+		t.Errorf("ID: want %d, got %d", want.ID, employee.ID)
+	}
+	if employee.Name != want.Name {
+		t.Errorf("Name: want %q, got %q", want.Name, employee.Name)
+	}
+	if employee.ExternalID != want.ExternalID {
+		t.Errorf("ExternalID: want %q, got %q", want.ExternalID, employee.ExternalID)
+	}
+}
+
+func TestEmployeesService_Find_NoParams(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.RawQuery; got != "" {
+			t.Errorf("expected empty query string, got %q", got)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(tangerino.Employee{}); err != nil {
+			t.Errorf("encoding response: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	client, _ := tangerino.NewClient("user", "pass")
+
+	_, err := client.Employees.Find(context.Background(), tangerino.FindEmployeeParams{})
+	if err != nil {
+		t.Fatalf("Find: %v", err)
+	}
+}
+
 func TestPage_HasNext(t *testing.T) {
 	middle := tangerino.Page[tangerino.Employee]{Last: false, Number: 0, TotalPages: 3}
 	if !middle.HasNext() {
