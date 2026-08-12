@@ -159,13 +159,63 @@ func TestEmployeesService_List_Pagination(t *testing.T) {
 	}
 }
 
-func TestEmployeesService_Find(t *testing.T) {
-	want := tangerino.Employee{
-		ID:         7226,
-		Name:       "CELMA PEREIRA DA SILVA",
-		ExternalID: "string",
-	}
+const findEmployeeResponse = `{
+    "id": 3450546,
+    "name": "BISMARK VERAS LEAL",
+    "email": "lealbismark89@gmail.com",
+    "birthDate": "1989-05-03",
+    "phone": "94992398398",
+    "cpf": "98386140259",
+    "ctps": "94186",
+    "series": "00049",
+    "pis": "20981163631",
+    "admissionDate": "2022-07-22",
+    "currentWorkSchedule": {
+        "id": 2266697,
+        "inactive": false
+    },
+    "company": {
+        "id": 2184050,
+        "externalId": "45959167"
+    },
+    "jobRoleDTO": {
+        "id": 3042884,
+        "description": "TECNICO DE TELECOMUNICACOES",
+        "alterationDate": 1781265924002
+    },
+    "managers": [
+        {
+            "id": 2161524,
+            "employee": {
+                "id": 3550777,
+                "name": "ANTONIO WILLIAM MORAES DE OLIVEIRA",
+                "admissionDate": "2023-10-13",
+                "fired": false,
+                "canViewWorkgroup": false,
+                "status": 0,
+                "doubleBindEmployee": false,
+                "recordsPunch": false
+            }
+        }
+    ],
+    "workplaceList": [
+        {
+            "id": 2224274,
+            "name": "MARABÁ",
+            "active": true
+        }
+    ],
+    "effectiveDate": 1692586800000,
+    "externalId": "7",
+    "fired": false,
+    "state": "Pará",
+    "canViewWorkgroup": false,
+    "status": 0,
+    "doubleBindEmployee": false,
+    "recordsPunch": true
+}`
 
+func TestEmployeesService_Find(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/employee/find" {
 			t.Errorf("unexpected path: got %q", r.URL.Path)
@@ -181,8 +231,8 @@ func TestEmployeesService_Find(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(want); err != nil {
-			t.Errorf("encoding response: %v", err)
+		if _, err := w.Write([]byte(findEmployeeResponse)); err != nil {
+			t.Errorf("writing response: %v", err)
 		}
 	}))
 	defer srv.Close()
@@ -201,14 +251,53 @@ func TestEmployeesService_Find(t *testing.T) {
 		t.Fatalf("Find: %v", err)
 	}
 
-	if employee.ID != want.ID {
-		t.Errorf("ID: want %d, got %d", want.ID, employee.ID)
+	if employee.ID != 3450546 {
+		t.Errorf("ID: want %d, got %d", 3450546, employee.ID)
 	}
-	if employee.Name != want.Name {
-		t.Errorf("Name: want %q, got %q", want.Name, employee.Name)
+	if employee.Name != "BISMARK VERAS LEAL" {
+		t.Errorf("Name: want %q, got %q", "BISMARK VERAS LEAL", employee.Name)
 	}
-	if employee.ExternalID != want.ExternalID {
-		t.Errorf("ExternalID: want %q, got %q", want.ExternalID, employee.ExternalID)
+	if employee.BirthDate == nil || *employee.BirthDate != "1989-05-03" {
+		t.Errorf("BirthDate: want %q, got %v", "1989-05-03", employee.BirthDate)
+	}
+	if employee.AdmissionDate != "2022-07-22" {
+		t.Errorf("AdmissionDate: want %q, got %q", "2022-07-22", employee.AdmissionDate)
+	}
+	if employee.Phone != "94992398398" {
+		t.Errorf("Phone: want %q, got %q", "94992398398", employee.Phone)
+	}
+	if employee.CTPS != "94186" {
+		t.Errorf("CTPS: want %q, got %q", "94186", employee.CTPS)
+	}
+	if employee.Series != "00049" {
+		t.Errorf("Series: want %q, got %q", "00049", employee.Series)
+	}
+	if employee.State != "Pará" {
+		t.Errorf("State: want %q, got %q", "Pará", employee.State)
+	}
+	if employee.Company.ID != 2184050 || employee.Company.ExternalID != "45959167" {
+		t.Errorf("Company: want {2184050 45959167}, got %+v", employee.Company)
+	}
+	if employee.JobRole.Description != "TECNICO DE TELECOMUNICACOES" {
+		t.Errorf("JobRole.Description: want %q, got %q", "TECNICO DE TELECOMUNICACOES", employee.JobRole.Description)
+	}
+	if employee.JobRole.AlterationDate != 1781265924002 {
+		t.Errorf("JobRole.AlterationDate: want %d, got %d", 1781265924002, employee.JobRole.AlterationDate)
+	}
+	if len(employee.Managers) != 1 || employee.Managers[0].Employee.Name != "ANTONIO WILLIAM MORAES DE OLIVEIRA" {
+		t.Errorf("Managers: unexpected value %+v", employee.Managers)
+	}
+	if len(employee.WorkplaceList) != 1 || employee.WorkplaceList[0].Name != "MARABÁ" || !employee.WorkplaceList[0].Active {
+		t.Errorf("WorkplaceList: unexpected value %+v", employee.WorkplaceList)
+	}
+	if employee.EffectiveDate != 1692586800000 {
+		t.Errorf("EffectiveDate: want %d, got %d", 1692586800000, employee.EffectiveDate)
+	}
+	if employee.ExternalID != "7" {
+		t.Errorf("ExternalID: want %q, got %q", "7", employee.ExternalID)
+	}
+	if !employee.RecordsPunch {
+		t.Error("RecordsPunch: want true, got false")
 	}
 }
 
@@ -219,7 +308,7 @@ func TestEmployeesService_Find_NoParams(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(tangerino.Employee{}); err != nil {
+		if err := json.NewEncoder(w).Encode(tangerino.EmployeeDetail{}); err != nil {
 			t.Errorf("encoding response: %v", err)
 		}
 	}))
